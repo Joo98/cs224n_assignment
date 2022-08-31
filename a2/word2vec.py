@@ -69,7 +69,9 @@ def naiveSoftmaxLossAndGradient(
     
     _softmax[outsideWordIdx] -= 1
     gradCenterVec = np.dot(outsideVectors.T, _softmax)
-    gradOutsideVecs = np.dot(np.expand_dims(_softmax,axis=1),np.expand_dims(centerWordVec,axis=0))
+    gradOutsideVecs = np.dot(_softmax.reshape((len(_softmax), 1 )),centerWordVec.reshape(1,len(centerWordVec)))
+    
+    
     
     ### END YOUR CODE
 
@@ -117,7 +119,20 @@ def negSamplingLossAndGradient(
     ### YOUR CODE HERE (~10 Lines)
 
     ### Please use your implementation of sigmoid in here.
+    temp_1 = np.dot(outsideVectors[outsideWordIdx], centerWordVec)
+    # Uo * Vc shape ( 1 )
+    neg_samples = outsideVectors[negSampleWordIndices]
+    temp_2 = -np.dot(neg_samples,centerWordVec)
+    # Uw * Vc which w != o and in neg_samples shape = (K)
+    loss = -np.log(sigmoid(temp_1)) - np.sum(np.log(sigmoid(temp_2)))
+    gradCenterVec = -(1 - sigmoid(temp_1)) * outsideVectors[outsideWordIdx] + np.sum(
+        (np.expand_dims(1 - sigmoid(temp_2),axis=1) * neg_samples), axis=0)
 
+    gradOutsideVecs = np.zeros(shape=outsideVectors.shape)
+    gradOutsideVecs[outsideWordIdx] = -(1 - sigmoid(temp_1)) * centerWordVec
+    for i,neg_idx in enumerate(negSampleWordIndices):
+        gradOutsideVecs[neg_idx] += (1 - sigmoid(temp_2)[i]) * centerWordVec
+        
     ### END YOUR CODE
 
     return loss, gradCenterVec, gradOutsideVecs
@@ -163,10 +178,14 @@ def skipgram(currentCenterWord, windowSize, outsideWords, word2Ind,
     gradOutsideVectors = np.zeros(outsideVectors.shape)
 
     ### YOUR CODE HERE (~8 Lines)
-
+    for outsideword in outsideWords:
+        temp_loss, gradCenterVec, gradOutsideVecs = word2vecLossAndGradient(centerWordVectors[word2Ind[currentCenterWord]], word2Ind[outsideword], outsideVectors, dataset)
+        loss += temp_loss
+        gradCenterVecs[word2Ind[currentCenterWord]] += gradCenterVec
+        gradOutsideVectors += gradOutsideVecs
     ### END YOUR CODE
     
-    return loss, gradCenterVecs, gradOutsideVectors
+    return loss, gradCenterVecs, gradOutsideVectors 
 
 
 #############################################
